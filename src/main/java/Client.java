@@ -1,5 +1,6 @@
 import java.io.*;
 import java.net.Socket;
+import java.net.SocketException;
 import java.net.UnknownHostException;
 
 public class Client {
@@ -11,7 +12,7 @@ public class Client {
             socket = new Socket("localhost", 1500);
             printStream = new PrintStream(socket.getOutputStream());
             bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-        } catch (UnknownHostException e) {
+        } catch (UnknownHostException e ) {
             System.err.println("Unidentified hostname ");
             System.exit(1);
         } catch (IOException e) {

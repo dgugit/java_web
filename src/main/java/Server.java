@@ -2,6 +2,7 @@ import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
+import java.net.SocketTimeoutException;
 
 public class Server extends Thread {
 
@@ -10,9 +11,11 @@ public class Server extends Thread {
     public Server() {
         try {
             serverSocket = new ServerSocket(1500);
+//            serverSocket.setSoTimeout(120000);
         } catch (IOException e) {
             System.out.println("Start server error: " + e);
         }
+
         System.out.println("Server starts...");
         this.start();
     }

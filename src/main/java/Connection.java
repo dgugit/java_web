@@ -1,5 +1,7 @@
 import java.io.*;
 import java.net.Socket;
+import java.net.SocketException;
+import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -10,6 +12,7 @@ public class Connection extends Thread {
     protected BufferedReader fromClient;
     protected PrintStream toClient;
     protected List<String> usedWords;
+    protected Character appLastCharacter = '-';
 
     public Connection(Socket socket) {
         this.socket = socket;
@@ -31,16 +34,36 @@ public class Connection extends Thread {
     }
 
     public void run() {
-        String clientMessage;
+        String clientMessage, result;
         try {
             while (true) {
                 toClient.println("Your word: ");
+                this.socket.setSoTimeout(20000);
                 clientMessage = fromClient.readLine();
                 if (clientMessage == null || clientMessage.equals("end")) {
                     return;
                 } else {
-                    toClient.println(processMessage(clientMessage));
+
+                    result = processMessage(clientMessage);
+                    if (result == "key0") {
+                        toClient.println("You LOSE (incorrect first letter)");
+                        this.socket.close();
+                    }
+                    if (result == "key1") {
+                        toClient.println("You LOSE (already used word)");
+                        this.socket.close();
+                    } else {
+                        toClient.println(result);
+
+                    }
+
                 }
+            }
+        } catch (SocketTimeoutException soe) {
+            toClient.println("You waste your time. YOU LOSE");
+            try {
+                socket.close();
+            } catch (IOException e) {
             }
         } catch (IOException e) {
         } finally {
@@ -52,7 +75,7 @@ public class Connection extends Thread {
     }
 
     public String processMessage(String message) {
-        String s = message.replaceAll("\\s","");
+        String s = message.replaceAll("\\s", "");
         String result = "My word: ";
         Character last_character = s.charAt(s.length() - 1);
         String word = "";
@@ -60,34 +83,34 @@ public class Connection extends Thread {
         try {
             CSVReader csvReader = new CSVReader(new FileReader("src/main/java/words.csv"));
             String[] csvrow = null;
-            while ((csvrow = csvReader.readNext()) != null) {
-                if(csvrow[0].charAt(0) == last_character)
-                {
-                    System.out.println("word --- " + csvrow[0]  + " --- character --- "+ last_character );
-                    if(!usedWords.contains(csvrow[0])) {
-                        word = csvrow[0];
-                        usedWords.add(csvrow[0]);
-                        break;
-                    }
-                }
-
+            if (usedWords.contains(s)) {
+                return "key1";
             }
-        }catch (Exception e)
-        {
+            usedWords.add(s);
+            System.out.println("last app character - |" + appLastCharacter + "| user first letter |" + s.charAt(0));
+
+            if (appLastCharacter == '-' || (s.charAt(0) == appLastCharacter && appLastCharacter != '-')) {
+                while ((csvrow = csvReader.readNext()) != null) {
+                    if (csvrow[0].charAt(0) == last_character) {
+                        System.out.println("used :" + usedWords);
+                        System.out.println("word --- " + csvrow[0] + " --- character --- " + last_character);
+                        if (!usedWords.contains(csvrow[0])) {
+
+                            word = csvrow[0];
+                            appLastCharacter = word.charAt(word.length() - 1);
+                            usedWords.add(csvrow[0]);
+                            return word;
+                        }
+                    }
+
+                }
+            } else {
+                return "key0";
+            }
+        } catch (Exception e) {
             System.out.println(e);
         }
-
-
         return word;
-    }
 
-    public boolean processWord(String word) {
-        char[] arr = word.toCharArray();
-        for (int i = 1; i < arr.length; i++) {
-            if (arr[i] == arr[i - 1]) {
-                return true;
-            }
-        }
-        return false;
     }
 }
